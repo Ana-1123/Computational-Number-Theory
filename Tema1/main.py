@@ -12,8 +12,8 @@ is_number = True
 
 
 def init_param(m):
-    p = getPrime(161, randfunc=get_random_bytes)
-    # p = 11
+    # p = getPrime(161, randfunc=get_random_bytes)
+    p = 11
     k = len(nrortext_to_base(m, p)) + 1
     return p, k
 
@@ -21,7 +21,7 @@ def init_param(m):
 # a-z 97-122 A-Z 65-90
 # pentru ca fiecare 2 cifre sa reprezinte codul ascii pentru o litera scad
 # fiecare cod ascii cu 23 si atunci cand decodific adun 23
-#if len m >=20 rezulta len m//20 blocuri a cate 20 + special bloc
+# if len m >=20 rezulta len m//20 blocuri a cate 20 + special bloc
 def nrortext_to_base(m, p):
     global is_number
     if m.isdigit():
@@ -47,6 +47,15 @@ def nrortext_to_base(m, p):
         res = res[::-1]
         is_number = False
     return res
+
+
+def text_to_base_more_that_20_characters(m):
+    list_of_blocks = []
+    for i in range(0, len(m), 20):
+        current_m = m[i:i + 20]
+        list_of_blocks.append(current_m)
+    print("Lista de blocuri:", list_of_blocks)
+    return list_of_blocks
 
 
 def frombase_to_decimal(m, p):
@@ -136,10 +145,61 @@ def coeficient_liberk(z, k, p):
                 if j != i:
                     produs *= j
                     p_inv *= (j - i)
+            print("invers:", inverse(p_inv, p))
             fc = (fc + z[i - 1] * (produs * inverse(p_inv, p)) % p) % p
+        print("sfr")
         if fc == 0:
             a = subset.copy()
             break
+    print("A", a)
+    end = time.time()
+    fc_time = end - start
+    return a, fc_time
+
+
+def coeficient_liber1(z, k, p):
+    start = time.time()
+    Afrom = []
+    for i in range(0, len(z)):
+        Afrom.append(i + 1)  # Afrom {1,..n}
+    a = []
+    allposibleA = it.combinations(Afrom, k)
+    for subset in list(allposibleA):
+        subset = list(subset)
+        fc = 0
+        list_p_inv = []
+        for i in subset:
+            produs = 1
+            p_inv = 1
+            for j in subset:
+                if j != i:
+                    produs *= j
+                    p_inv *= (j - i)
+            # fc = (fc + z[i - 1] * (produs * inverse(p_inv, p)) % p) % p
+            list_p_inv.append(p_inv % p)
+        list_of_c = []
+        list_of_inverse = []
+        c1 = list_p_inv[0]
+        list_of_c.append(c1)
+        for i in range(1, len(list_p_inv)):
+            c_current = list_of_c[i - 1] * list_p_inv[i] % p
+            list_of_c.append(c_current)
+        u = inverse(list_of_c[len(list_p_inv) - 1], p)
+        for i in range(len(list_p_inv) - 1, 0, -1):
+            list_of_inverse.append(u * list_of_c[i - 1] % p)
+            u = u * list_p_inv[i] % p
+        list_of_inverse.append(u)
+        list_of_inverse = list_of_inverse[::-1]
+        k = 0
+        print("al inv", list_of_inverse)
+        for i in subset:
+            fc = (fc + z[i - 1] * (produs * list_of_inverse[k]) % p) % p
+            k += 1
+        if fc == 0:
+            a = subset.copy()
+            break
+        else:
+            print("fc=", fc)
     print("A", a)
     end = time.time()
     fc_time = end - start
@@ -218,10 +278,10 @@ def coeficient_liberk(z, k, p):
 def comparare_calcul_fc(z, k, p):
     a, fc_kk = coeficient_liberkk(z, k, p)
     a, fc_k = coeficient_liberk(z, k, p)
-    # a, fc_1 = coeficient_liber1(z, k, p)
+    a, fc_1 = coeficient_liber1(z, k, p)
     print("Calcul coeficientului liber varianta folosing k(k-1) inversari: ", fc_kk,
-          "\nCalcul coeficientului liber varianta folosing k inversari: ", fc_k  # ,
-          # "\nCalcul coeficientului liber varianta folosing 1 inversare: ", fc_1
+          "\nCalcul coeficientului liber varianta folosing k inversari: ", fc_k,
+          "\nCalcul coeficientului liber varianta folosing 1 inversare: ", fc_1
           )
 
 
@@ -251,7 +311,7 @@ def add(A, B, m, n, p):
 
 def decodificare(z, k, p):
     result = []
-    a, fc_time = coeficient_liberk(z, k, p)
+    a, fc_time = coeficient_liber1(z, k, p)
     for i in a:
         produs = [1]
         for j in a:
@@ -272,16 +332,40 @@ def decodificare(z, k, p):
 
 if __name__ == '__main__':
     m = input("Introduceti un text:")
-    p, k = init_param(m)
-    vec = nrortext_to_base(m, p)
-    print(vec)
-    y = codificare(vec, k, p)
-    print(codificare(vec, k, p))
-    z, err = alterare(y, p)
-    print("Vectorul cu eroare:", z)
-    comparare_calcul_fc(z, k, p)
-    f = decodificare(z, k, p)
-    if is_number is False:
-        ascii_codes_string = frombase_to_decimal(f, p)
-        print(ascii_codes_string)
-        print(frombase_to_text(str(ascii_codes_string)))
+    if m.isdigit() or len(m) <= 20:
+        p, k = init_param(m)
+        vec = nrortext_to_base(m, p)
+        long_text = False
+    else:
+        p = getPrime(161, randfunc=get_random_bytes)
+        # p = 11
+        blocks = text_to_base_more_that_20_characters(m)
+        long_text = True
+    if long_text is False:
+        y = codificare(vec, k, p)
+        print(codificare(vec, k, p))
+        z, err = alterare(y, p)
+        print("Vectorul cu eroare:", z)
+        comparare_calcul_fc(z, k, p)
+        f = decodificare(z, k, p)
+        if is_number is False:
+            ascii_codes_string = frombase_to_decimal(f, p)
+            print(ascii_codes_string)
+            print(frombase_to_text(str(ascii_codes_string)))
+    else:
+        codif_blocks = []
+        for i in range(0, len(blocks)):
+            k = len(nrortext_to_base(blocks[i], p)) + 1
+            vec = nrortext_to_base(blocks[i], p)
+            y = codificare(vec, k, p)
+            codif_blocks.append(y)
+            print("Vectorul y: ", codificare(vec, k, p))
+        for i in range(0, len(codif_blocks)):
+            z, err = alterare(codif_blocks[i], p)
+            print("Vectorul cu eroare(z):", z)
+            comparare_calcul_fc(z, k, p)
+            f = decodificare(z, k, p)
+            if is_number is False:
+                ascii_codes_string = frombase_to_decimal(f, p)
+                print(ascii_codes_string)
+                print(frombase_to_text(str(ascii_codes_string)))
