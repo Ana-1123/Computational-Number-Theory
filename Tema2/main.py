@@ -27,21 +27,22 @@ def generare_param():
     return p, q, r
 
 
+# p,q,r - m-urile
 def tcr_garner_3(p, q, r, x_p, x_q, x_r):
-    c_2 = inverse(p, q)
-    c_3 = (inverse(q, r) * inverse(p, r)) % r
+    inverse_m_prod_2 = inverse(p, q)
+    inverse_m_prod_3 = (inverse(q, r) * inverse(p, r)) % r
     x = x_p
-    u = (x_q - x) * c_2 % q
-    x += u * p
-    u = (x_r - x) * c_3 % r
-    x += u * p * q
+    alpha = (x_q - x) * inverse_m_prod_2 % q
+    x += alpha * p
+    alpha = (x_r - x) * inverse_m_prod_3 % r
+    x += alpha * p * q
     return x
 
 
 def tcr_garner_2(p2, q, x_p2, x_q):
-    c_2 = inverse(p2, q)
-    u = (x_q - x_p2) * c_2 % q
-    x = x_p2 + u * p2
+    inverse_m_prod_2 = inverse(p2, q)
+    alpha = (x_q - x_p2) * inverse_m_prod_2 % q
+    x = x_p2 + alpha * p2
     return x
 
 
@@ -109,6 +110,17 @@ def multi_prime_rsa_lr_bin(p, q, r, e, d, y):
     print("Timpul decriptarii utilizand TCR cu algoritmul Garner lr_binar:", fc_time)
 
 
+def convert_frombasetobase(nr, base):
+    res = []
+    while (nr > 0):
+        res.append(nr % base)
+        nr //= base
+    res = res[::-1]
+
+    return res
+
+
+# base = 2^w
 def lr_fixed_wind(x, n, m, base):
     x_list = []
     for i in range(0, base):
@@ -118,10 +130,10 @@ def lr_fixed_wind(x, n, m, base):
     for i in range(1, base):
         x_list[i] = (x_list[i - 1] * x) % m
         lungime += 1
-    n = list(map(int, bin(n).replace("0b", "")))
+    n = convert_frombasetobase(n, base)
     k = len(n)
     y = 1
-    for i in range(k):
+    for i in range(0, k):
         y = pow(y, base, m)
         y = y * x_list[n[i]] % m
         lungime += 1
@@ -132,9 +144,9 @@ def lr_fixed_wind(x, n, m, base):
 
 def multi_prime_rsa_lr_fixed_wind(p, q, r, e, d, y):
     start = time.time()
-    x_p = lr_fixed_wind(y % p, d % (p - 1), p, 2)
-    x_q = lr_fixed_wind(y % q, d % (q - 1), q, 2)
-    x_r = lr_fixed_wind(y % r, d % (r - 1), r, 2)
+    x_p = lr_fixed_wind(y % p, d % (p - 1), p, 4)
+    x_q = lr_fixed_wind(y % q, d % (q - 1), q, 4)
+    x_r = lr_fixed_wind(y % r, d % (r - 1), r, 4)
     x = tcr_garner_3(p, q, r, x_p, x_q, x_r)
     print("Decriptare multiprime RSA(TCR cu Garner) lr_fixed_wind: ", x)
     end = time.time()
@@ -147,6 +159,7 @@ def lr_slid_wind(x, n, m, w=4):
     xi[1] = x % m
     xi[2] = (xi.get(1) * xi.get(1)) % m
     lungimea = 1
+    # avem nevoie doar de puterile impare deoarece blocurile incep si se termina cu unu, reprezentand numere impare
     for omega in range(3, 2 ** w, 2):
         xi[omega] = xi.get(omega - 2) * xi.get(2) % m
         lungimea += 1
@@ -156,7 +169,7 @@ def lr_slid_wind(x, n, m, w=4):
     i = len(n_b) - 1
     while i >= 0:
         if n_b[i] == 0:
-            y = y * y % m
+            y = y ** 2 % m
             i -= 1
         else:
             nr = 0
@@ -164,7 +177,7 @@ def lr_slid_wind(x, n, m, w=4):
             while j < i and n_b[j] != 1:
                 j += 1
             for lnr in range(1, i - j + 2):
-                y = y * y % m
+                y = y ** 2 % m
             for k in range(i, j - 1, -1):
                 nr = nr * 10 + n_b[k]
             ni_nj = int(str(nr), 2)
@@ -198,9 +211,9 @@ if __name__ == '__main__':
     n = p * q * r
     d = inverse(e, phi)
     x = input("Introduceti un numar:")
-    # y = pow(int(x), e, n)
-    # print("Numarul criptat: ", y)
-    y = int(x)
+    y = pow(int(x), e, n)
+    print("Numarul criptat: ", y)
+    # y = int(x)
     multi_prime_rsa(p, q, r, e, d, y)
 
     decriptare_librarii(y, n)
@@ -226,8 +239,8 @@ if __name__ == '__main__':
         e = getPrime(16, randfunc=get_random_bytes)
     d = inverse(e, phi)
     x = input("Introduceti un numar:")
-    # y = pow(int(x), e, n)
-    # print("Numarul criptat: ", y)
-    y = int(x)
+    y = pow(int(x), e, n)
+    print("Numarul criptat: ", y)
+    # y = int(x)
     multi_power_rsa(p, q, r, e, d, y)
     decriptare_librarii(y, n)
